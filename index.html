@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla de Países - Desarrollo Web</title>
+    <style>
+        /* ESTILOS (CSS) */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .table-container {
+            overflow-x: auto; /* Scroll horizontal si la pantalla es chica */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            background-color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px; /* Ancho mínimo para que no se aplaste */
+        }
+
+        /* Encabezado Verde (Como tu foto) */
+        thead tr {
+            background-color: #009879; 
+            color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        /* Filas alternadas para mejor lectura */
+        tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+
+        /* Efecto al pasar el mouse */
+        tbody tr:hover {
+            background-color: #e0f2f1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        /* Imagen de la bandera */
+        .flag-img {
+            width: 50px;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .map-link {
+            text-decoration: none;
+            color: #009879;
+            font-weight: bold;
+            border: 1px solid #009879;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        .map-link:hover {
+            background-color: #009879;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Listado de Países del Mundo</h1>
+    
+    <div class="table-container">
+        <table id="countries-table">
+            <thead>
+                <tr>
+                    <th>Bandera</th>
+                    <th>Nombre Oficial</th>
+                    <th>Capital</th>
+                    <th>Región</th>
+                    <th>Población</th>
+                    <th>Moneda(s)</th>
+                    <th>Idioma(s)</th>
+                    <th>Mapa</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 20px;">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        /* JAVASCRIPT CORREGIDO */
+        
+        // 1. URL OPTIMIZADA: Pedimos solo los campos específicos para evitar sobrecarga (Error 400)
+        const API_URL = 'https://restcountries.com/v3.1/all?fields=name,flags,capital,region,population,currencies,languages,maps';
+
+        // 2. DATOS DE RESPALDO (Por si la API muere totalmente, tu tarea sigue funcionando)
+        const backupData = [
+            {
+                name: { common: "México", official: "Estados Unidos Mexicanos" },
+                flags: { svg: "https://flagcdn.com/mx.svg" },
+                capital: ["Ciudad de México"],
+                region: "Americas",
+                population: 128932753,
+                currencies: { MXN: { name: "Peso mexicano" } },
+                languages: { spa: "Español" },
+                maps: { googleMaps: "https://goo.gl/maps/s5g7imNMKecp3rTe6" }
+            },
+            {
+                name: { common: "Colombia", official: "República de Colombia" },
+                flags: { svg: "https://flagcdn.com/co.svg" },
+                capital: ["Bogotá"],
+                region: "Americas",
+                population: 50882884,
+                currencies: { COP: { name: "Peso colombiano" } },
+                languages: { spa: "Español" },
+                maps: { googleMaps: "https://goo.gl/maps/RdwTg8e4aJgsSDEj8" }
+            },
+            {
+                name: { common: "España", official: "Reino de España" },
+                flags: { svg: "https://flagcdn.com/es.svg" },
+                capital: ["Madrid"],
+                region: "Europe",
+                population: 47351567,
+                currencies: { EUR: { name: "Euro" } },
+                languages: { spa: "Español" },
+                maps: { googleMaps: "https://goo.gl/maps/138JaXW8EZwArQAo9" }
+            }
+        ];
+
+        const getCountries = async () => {
+            try {
+                console.log("Intentando descargar datos de la API...");
+                const response = await fetch(API_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`La API respondió: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Datos descargados correctamente:", data);
+                renderTable(data);
+
+            } catch (error) {
+                console.warn('Falló la API, usando datos de respaldo local.', error);
+                
+                // AQUÍ ESTÁ EL TRUCO: Si falla la API, usamos el backup
+                renderTable(backupData);
+                
+                // Avisamos visualmente que estamos en modo respaldo
+                const header = document.querySelector('h1');
+                header.innerHTML += ' <span style="font-size: 0.5em; color: red;">(Modo Offline/Respaldo)</span>';
+                header.style.color = "#d32f2f";
+            }
+        };
+
+        const renderTable = (countries) => {
+            const tableBody = document.getElementById('table-body');
+            let htmlContent = '';
+
+            if(!countries || countries.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="8">No hay datos para mostrar</td></tr>';
+                 return;
+            }
+
+            countries.forEach(country => {
+                try {
+                    const commonName = country.name?.common || 'Desconocido';
+                    const officialName = country.name?.official || 'N/A';
+                    const flag = country.flags?.svg || '';
+                    const capital = country.capital ? country.capital[0] : 'N/A';
+                    const region = country.region || 'N/A';
+                    
+                    const population = country.population 
+                        ? new Intl.NumberFormat('es-MX').format(country.population) 
+                        : '0';
+
+                    // Validación extra fuerte para monedas
+                    let currencies = 'N/A';
+                    if (country.currencies) {
+                        currencies = Object.values(country.currencies).map(c => c.name).join(', ');
+                    }
+
+                    // Validación extra fuerte para idiomas
+                    let languages = 'N/A';
+                    if (country.languages) {
+                        languages = Object.values(country.languages).join(', ');
+                    }
+
+                    const mapUrl = country.maps?.googleMaps || '#';
+
+                    htmlContent += `
+                        <tr>
+                            <td><img src="${flag}" alt="${commonName}" class="flag-img"></td>
+                            <td>
+                                <strong>${commonName}</strong><br>
+                                <small style="color: gray;">${officialName}</small>
+                            </td>
+                            <td>${capital}</td>
+                            <td>${region}</td>
+                            <td>${population}</td>
+                            <td>${currencies}</td>
+                            <td>${languages}</td>
+                            <td><a href="${mapUrl}" target="_blank" class="map-link">Ver</a></td>
+                        </tr>
+                    `;
+                } catch (err) {
+                    console.error("Error pintando una fila:", err);
+                }
+            });
+
+            tableBody.innerHTML = htmlContent;
+        };
+
+        document.addEventListener('DOMContentLoaded', getCountries);
+    </script>
+</body>
+</html>
